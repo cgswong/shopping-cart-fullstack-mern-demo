@@ -1,18 +1,7 @@
 import mongoose from 'mongoose';
+import { Product } from './models/index.js';
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/shopping-cart';
-
-const productSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  description: String,
-  price: { type: Number, required: true },
-  stock: { type: Number, default: 0 },
-  imageUrl: String,
-  category: String,
-  createdAt: { type: Date, default: Date.now }
-});
-
-const Product = mongoose.model('Product', productSchema);
 
 const sampleProducts = [
   {

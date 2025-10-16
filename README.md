@@ -5,11 +5,12 @@ A scalable, fault-tolerant shopping cart application built with React, Express, 
 ## Architecture
 
 ### Application Structure
-- **Backend** (Port 3000) - Monolithic Express app with all API endpoints
-  - Auth endpoints - JWT-based authentication
-  - Product endpoints - Product catalog management
-  - Cart endpoints - Shopping cart operations
-  - Order endpoints - Order processing
+- **Backend** (Port 3000) - Modular Express app with organized routes
+  - Auth routes (`/api/auth`) - JWT-based authentication
+  - Product routes (`/api/products`) - Product catalog management
+  - Cart routes (`/api/cart`) - Shopping cart operations
+  - Order routes (`/api/orders`) - Order processing
+  - Shared models and middleware
 - **Frontend** (Port 80) - React SPA with Nginx
 
 ### Technology Stack
@@ -371,7 +372,17 @@ curl -X POST http://localhost:3000/api/auth/login \
 fullstack-demo/
 ├── express-app/       # Express backend
 │   ├── src/
-│   │   └── index.js   # Monolithic Express app
+│   │   ├── models/    # Database models
+│   │   │   └── index.js
+│   │   ├── routes/    # Route handlers
+│   │   │   ├── auth.js
+│   │   │   ├── products.js
+│   │   │   ├── cart.js
+│   │   │   └── orders.js
+│   │   ├── middleware/  # Middleware functions
+│   │   │   └── auth.js
+│   │   ├── index.js   # Main application entry
+│   │   └── seed.js    # Database seeding script
 │   ├── Dockerfile
 │   └── package.json
 ├── react-app/         # React frontend
@@ -383,6 +394,7 @@ fullstack-demo/
 │   ├── compose.yaml   # Podman Compose configuration
 │   ├── cloudformation-ecs.yaml  # AWS infrastructure
 │   └── deploy.sh      # Deployment script
+├── Makefile           # Build and deployment automation
 ├── package.json       # Root package.json with workspaces
 └── README.md
 ```
