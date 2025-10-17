@@ -20,8 +20,13 @@ app.use(limiter);
 
 // Database connection
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/shopping-cart';
-await mongoose.connect(MONGO_URI);
-console.log('Connected to MongoDB');
+try {
+  await mongoose.connect(MONGO_URI);
+  console.log('Connected to MongoDB');
+} catch (error) {
+  console.error('MongoDB connection error:', error);
+  process.exit(1);
+}
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -31,6 +36,24 @@ app.use('/api/orders', orderRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
+// Global error handler for Express 5
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  
+  // Handle specific error types
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({ error: err.message });
+  }
+  if (err.name === 'CastError') {
+    return res.status(400).json({ error: 'Invalid ID format' });
+  }
+  if (err.code === 11000) {
+    return res.status(400).json({ error: 'Duplicate entry' });
+  }
+  
+  res.status(500).json({ error: 'Something went wrong!' });
+});
 
 // Start server
 const PORT = process.env.PORT || 3000;
