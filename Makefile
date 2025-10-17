@@ -1,4 +1,4 @@
-.PHONY: help install test lint build-backend build-frontend build deploy-local deploy-aws clean
+.PHONY: help install test lint build-backend build-frontend build deploy-local deploy-aws clean validate-aws
 
 # Default target
 .DEFAULT_GOAL := help
@@ -8,6 +8,7 @@ REGION ?= us-east-1
 ACCOUNT_ID := $(shell aws sts get-caller-identity --query Account --output text 2>/dev/null)
 ECR_BACKEND := $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/shopping-cart-backend
 ECR_FRONTEND := $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/shopping-cart-frontend
+STACK_NAME := shopping-cart-stack
 
 help: ## Show this help message
 	@echo 'Simple Shopping Cart application to demo a fullstack MERN app'
@@ -18,9 +19,9 @@ help: ## Show this help message
 
 # Testing and Validation
 install: ## Install all dependencies
-	@echo "Installing frontend dependencies, creating package-lock.json..."
+	@echo "Installing frontend dependencies..."
 	cd react-app && npm install
-	@echo "Installing backend dependencies, creating package-lock.json..."
+	@echo "Installing backend dependencies..."
 	cd express-app && npm install
 
 test: ## Run tests for backend and frontend
@@ -36,6 +37,14 @@ lint: ## Lint backend and frontend code
 	cd react-app && npm run lint || echo "No linting configured"
 
 validate: install lint test ## Run all validation checks
+
+validate-aws: ## Validate AWS credentials and CloudFormation template
+	@echo "Validating AWS credentials..."
+	@aws sts get-caller-identity > /dev/null || (echo "❌ AWS credentials not configured" && exit 1)
+	@echo "✅ AWS credentials valid"
+	@echo "Validating CloudFormation template..."
+	@aws cloudformation validate-template --template-body file://infrastructure/cloudformation-ecs.yaml > /dev/null || (echo "❌ CloudFormation template invalid" && exit 1)
+	@echo "✅ CloudFormation template valid"
 
 seed: ## Seed database with sample products
 	@echo "Seeding database with sample products..."
@@ -73,12 +82,12 @@ logs-local: ## View logs from local deployment
 # AWS Deployment
 ecr-login: ## Login to AWS ECR
 	@echo "Logging in to ECR..."
-	aws ecr get-login-password --region $(REGION) | podman login --username AWS --password-stdin $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com
+	@aws ecr get-login-password --region $(REGION) | podman login --username AWS --password-stdin $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com
 
 ecr-create: ## Create ECR repositories
 	@echo "Creating ECR repositories..."
-	aws ecr create-repository --repository-name shopping-cart-backend --region $(REGION) 2>/dev/null || true
-	aws ecr create-repository --repository-name shopping-cart-frontend --region $(REGION) 2>/dev/null || true
+	@aws ecr create-repository --repository-name shopping-cart-backend --region $(REGION) 2>/dev/null || true
+	@aws ecr create-repository --repository-name shopping-cart-frontend --region $(REGION) 2>/dev/null || true
 
 push-backend: build-backend ecr-login ## Build and push backend image to ECR
 	@echo "Tagging and pushing backend..."
@@ -92,14 +101,25 @@ push-frontend: build-frontend ecr-login ## Build and push frontend image to ECR
 
 push: push-backend push-frontend ## Build and push all images to ECR
 
-deploy-aws: ecr-create push ## Deploy application to AWS ECS
+deploy-aws: validate-aws ecr-create push ## Deploy application to AWS ECS
 	@echo "Deploying to AWS..."
 	@if [ -z "$(MONGODB_URI)" ]; then \
-		echo "Error: MONGODB_URI environment variable is required"; \
+		echo "❌ Error: MONGODB_URI environment variable is required"; \
+		echo "   Example: export MONGODB_URI='mongodb+srv://user:pass@cluster.mongodb.net/shopping-cart'"; \
 		exit 1; \
 	fi
 	cd infrastructure && ./deploy.sh
-	@echo "Deployment complete!"
+	@echo "✅ Deployment complete!"
+
+status-aws: ## Check AWS deployment status
+	@echo "Checking CloudFormation stack status..."
+	@aws cloudformation describe-stacks --stack-name $(STACK_NAME) --region $(REGION) --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "Stack not found"
+	@echo "Checking ECS services..."
+	@aws ecs describe-services --cluster shopping-cart-cluster --services shopping-cart-backend shopping-cart-frontend --region $(REGION) --query 'services[*].[serviceName,status,runningCount,desiredCount]' --output table 2>/dev/null || echo "Services not found"
+
+logs-aws: ## View AWS ECS logs
+	@echo "Fetching recent ECS logs..."
+	@aws logs tail /ecs/shopping-cart --since 1h --region $(REGION) 2>/dev/null || echo "No logs found"
 
 # Cleanup
 clean: ## Remove built images and containers
@@ -110,7 +130,7 @@ clean: ## Remove built images and containers
 
 clean-aws: ## Delete AWS CloudFormation stack
 	@echo "Deleting CloudFormation stack..."
-	aws cloudformation delete-stack --stack-name shopping-cart-stack --region $(REGION)
+	@aws cloudformation delete-stack --stack-name $(STACK_NAME) --region $(REGION)
 	@echo "Waiting for stack deletion..."
-	aws cloudformation wait stack-delete-complete --stack-name shopping-cart-stack --region $(REGION)
-	@echo "Stack deleted successfully"
+	@aws cloudformation wait stack-delete-complete --stack-name $(STACK_NAME) --region $(REGION)
+	@echo "✅ Stack deleted successfully"
