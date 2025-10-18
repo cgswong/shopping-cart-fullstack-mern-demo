@@ -19,9 +19,9 @@ const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 app.use(limiter);
 
 // Database connection
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/shopping-cart';
+const DATABASE_URI = process.env.DATABASE_URI || 'mongodb://localhost:27017/shopping-cart';
 try {
-  await mongoose.connect(MONGO_URI);
+  await mongoose.connect(DATABASE_URI);
   console.log('Connected to MongoDB');
 } catch (error) {
   console.error('MongoDB connection error:', error);

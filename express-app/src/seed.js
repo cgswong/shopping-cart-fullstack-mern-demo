@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Product } from './models/index.js';
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/shopping-cart';
+const DATABASE_URI = process.env.DATABASE_URI || 'mongodb://localhost:27017/shopping-cart';
 
 const sampleProducts = [
   {
@@ -104,7 +104,7 @@ const sampleProducts = [
 
 async function seedDatabase() {
   try {
-    await mongoose.connect(MONGO_URI);
+    await mongoose.connect(DATABASE_URI);
     console.log('Connected to MongoDB');
 
     const count = await Product.countDocuments();

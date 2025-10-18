@@ -125,7 +125,7 @@ cd ../react-app && podman build -t shopping-cart-frontend .
 1. **Set environment variables:**
 ```bash
 export AWS_REGION=us-east-1
-export MONGODB_URI="mongodb+srv://<user>:<password>@cluster.mongodb.net/shopping-cart"
+export DATABASE_URI="mongodb+srv://<user>:<password>@cluster.mongodb.net/shopping-cart"
 ```
 
 2. **Run deployment:**
@@ -183,7 +183,7 @@ podman push <account-id>.dkr.ecr.us-east-1.amazonaws.com/shopping-cart-frontend:
 aws cloudformation deploy \
   --template-file infrastructure/cloudformation-ecs.yaml \
   --stack-name shopping-cart-stack \
-  --parameter-overrides MongoDBConnectionString="$MONGODB_URI" \
+  --parameter-overrides MongoDBConnectionString="$DATABASE_URI" \
   --capabilities CAPABILITY_IAM \
   --region us-east-1
 ```
@@ -247,6 +247,17 @@ aws cloudformation describe-stacks \
 - `GET /orders` - List user's orders
 - `GET /orders/:id` - Get order details
 - `PATCH /orders/:id/status` - Update order status
+
+## Environment Variables
+
+### Backend Service
+- `DATABASE_URI` - MongoDB connection string
+- `JWT_SECRET` - Secret key for JWT token signing
+
+### Frontend Service
+- `BACKEND_URL` - URL for backend API proxy (configured via nginx template)
+  - Local: `http://backend:3000`
+  - AWS ECS: `http://<ALB_DNS_NAME>`
 
 ## Security Features
 

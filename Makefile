@@ -89,6 +89,11 @@ ecr-create: ## Create ECR repositories
 	@aws ecr create-repository --repository-name shopping-cart-backend --region $(REGION) 2>/dev/null || true
 	@aws ecr create-repository --repository-name shopping-cart-frontend --region $(REGION) 2>/dev/null || true
 
+cleanup-ecr: ## Cleanup ECR repositories
+	@echo "Deleting ECR repositories..."
+	@aws ecr delete-repository --repository-name shopping-cart-backend --region $(REGION) --force 2>/dev/null || true
+	@aws ecr delete-repository --repository-name shopping-cart-frontend --region $(REGION) --force 2>/dev/null || true
+
 push-backend: build-backend ecr-login ## Build and push backend image to ECR
 	@echo "Tagging and pushing backend..."
 	podman tag shopping-cart-backend:latest $(ECR_BACKEND):latest
@@ -103,12 +108,24 @@ push: push-backend push-frontend ## Build and push all images to ECR
 
 deploy-aws: validate-aws ecr-create push ## Deploy application to AWS ECS
 	@echo "Deploying to AWS..."
-	@if [ -z "$(MONGODB_URI)" ]; then \
-		echo "❌ Error: MONGODB_URI environment variable is required"; \
-		echo "   Example: export MONGODB_URI='mongodb+srv://user:pass@cluster.mongodb.net/shopping-cart'"; \
+	@if [ -z "$(DATABASE_URI)" ]; then \
+		echo "❌ Error: DATABASE_URI environment variable is required"; \
+		echo "   Example: export DATABASE_URI='mongodb+srv://user:pass@cluster.mongodb.net/shopping-cart'"; \
 		exit 1; \
 	fi
-	cd infrastructure && ./deploy.sh
+	@echo "Deploying CloudFormation stack..."
+	@aws cloudformation deploy \
+		--template-file infrastructure/cloudformation-ecs.yaml \
+		--stack-name $(STACK_NAME) \
+		--parameter-overrides MongoDBConnectionString="$(DATABASE_URI)" \
+		--capabilities CAPABILITY_IAM \
+		--region $(REGION)
+	@echo "Getting ALB URL..."
+	@aws cloudformation describe-stacks \
+		--stack-name $(STACK_NAME) \
+		--query 'Stacks[0].Outputs[?OutputKey==`LoadBalancerURL`].OutputValue' \
+		--output text \
+		--region $(REGION)
 	@echo "✅ Deployment complete!"
 
 status-aws: ## Check AWS deployment status
@@ -128,7 +145,7 @@ clean: ## Remove built images and containers
 	podman rmi shopping-cart-frontend:latest 2>/dev/null || true
 	cd infrastructure && podman-compose down -v 2>/dev/null || true
 
-clean-aws: ## Delete AWS CloudFormation stack
+clean-aws: cleanup-ecr ## Delete AWS CloudFormation stack
 	@echo "Deleting CloudFormation stack..."
 	@aws cloudformation delete-stack --stack-name $(STACK_NAME) --region $(REGION)
 	@echo "Waiting for stack deletion..."

@@ -230,6 +230,9 @@ Resources:
         - FARGATE
       Cpu: 256
       Memory: 512
+      RuntimePlatform:
+        CpuArchitecture: ARM64
+        OperatingSystemFamily: LINUX
       ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
@@ -238,7 +241,7 @@ Resources:
           PortMappings:
             - ContainerPort: 3000
           Secrets:
-            - Name: MONGO_URI
+            - Name: DATABASE_URI
               ValueFrom: !Ref MongoDBSecret
             - Name: JWT_SECRET
               ValueFrom: !Sub '${JWTSecret}:secret::'
@@ -258,6 +261,9 @@ Resources:
         - FARGATE
       Cpu: 256
       Memory: 512
+      RuntimePlatform:
+        CpuArchitecture: ARM64
+        OperatingSystemFamily: LINUX
       ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
@@ -265,6 +271,9 @@ Resources:
           Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/shopping-cart-frontend:latest'
           PortMappings:
             - ContainerPort: 80
+          Environment:
+            - Name: BACKEND_URL
+              Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
           LogConfiguration:
             LogDriver: awslogs
             Options:

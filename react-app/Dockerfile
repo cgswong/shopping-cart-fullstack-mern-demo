@@ -19,14 +19,17 @@ RUN npm run build
 # Production stage (Alpine)
 FROM nginx:alpine
 
+# Install gettext for envsubst
+RUN apk add --no-cache gettext
+
 # Copy built assets from build stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy nginx configuration template
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
 # Expose port 80
 EXPOSE 80
 
-# Start nginx
+# Start nginx (nginx will automatically process templates with envsubst)
 CMD ["nginx", "-g", "daemon off;"]
