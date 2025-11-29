@@ -5,6 +5,7 @@ A scalable, fault-tolerant shopping cart application built with React, Express, 
 ## Architecture
 
 ### Application Structure
+
 - **Backend** (Port 3000) - Modular Express app with organized routes
   - Auth routes (`/api/auth`) - JWT-based authentication
   - Product routes (`/api/products`) - Product catalog management
@@ -14,10 +15,11 @@ A scalable, fault-tolerant shopping cart application built with React, Express, 
 - **Frontend** (Port 80) - React SPA with Nginx
 
 ### Technology Stack
+
 - **Frontend**: React 19 + Vite 6
 - **Backend**: Node.js 22 + Express
 - **Database**: MongoDB 7
-- **Container Runtime**: Podman
+- **Container Runtime**: Docker / Podman
 - **Container Orchestration**: AWS ECS Fargate
 - **Load Balancing**: Application Load Balancer
 - **Secrets Management**: AWS Secrets Manager
@@ -26,39 +28,45 @@ A scalable, fault-tolerant shopping cart application built with React, Express, 
 ## Local Development
 
 ### Prerequisites
+
 - Node.js 22+
-- Podman & podman-compose
+- docker & podman-compose
 - MongoDB (or use podman-compose)
 - Make (for using Makefile commands)
 
 ### Quick Start
 
 1. **Install dependencies:**
+
 ```bash
 make install
 ```
 
-2. **Start all services with Podman Compose:**
+1. **Start all services with Podman Compose:**
+
 ```bash
 make deploy-local
 ```
 
-3. **Access the application:**
-- Frontend: http://localhost:80
-- Backend API: http://localhost:3000
-- Auth Service: http://localhost:3001
-- Product Service: http://localhost:3002
-- Cart Service: http://localhost:3003
-- Order Service: http://localhost:3004
+1. **Access the application:**
+
+- Frontend: <http://localhost:80>
+- Backend API: <http://localhost:3000>
+- Auth Service: <http://localhost:3001>
+- Product Service: <http://localhost:3002>
+- Cart Service: <http://localhost:3003>
+- Order Service: <http://localhost:3004>
 
 ### Makefile Commands
 
 View all available commands:
+
 ```bash
 make help
 ```
 
 Common commands:
+
 ```bash
 make install        # Install dependencies
 make validate       # Run tests and linting
@@ -69,19 +77,22 @@ make logs-local     # View logs
 make deploy-aws     # Deploy to AWS
 make clean          # Clean up local resources
 ```
-- Auth Service: http://localhost:3001
-- Product Service: http://localhost:3002
-- Cart Service: http://localhost:3003
-- Order Service: http://localhost:3004
+
+- Auth Service: <http://localhost:3001>
+- Product Service: <http://localhost:3002>
+- Cart Service: <http://localhost:3003>
+- Order Service: <http://localhost:3004>
 
 ### Development Mode (Individual Services)
 
 **Start MongoDB:**
+
 ```bash
-podman run -d -p 27017:27017 mongo:7
+docker run -d -p 27017:27017 mongo:7
 ```
 
 **Start each service individually:**
+
 ```bash
 npm run dev:backend    # Port 3000
 npm run dev:frontend   # Port 5173
@@ -92,27 +103,30 @@ npm run dev:frontend   # Port 5173
 ### Build Container Images
 
 Using Makefile:
+
 ```bash
 make build              # Build all images
 make build-backend      # Build backend only
 make build-frontend     # Build frontend only
 ```
 
-Or manually with Podman:
+Or manually with Docker:
+
 ```bash
 # Build backend
-cd express-app && podman build -t shopping-cart-backend .
+cd express-app && docker build -t shopping-cart-backend .
 
 # Build frontend
-cd ../react-app && podman build -t shopping-cart-frontend .
+cd ../react-app && docker build -t shopping-cart-frontend .
 ```
 
 ## AWS Deployment
 
 ### Prerequisites
+
 - AWS CLI configured with appropriate credentials
 - MongoDB Atlas account (or AWS DocumentDB)
-- Podman installed
+- Docker / Podman installed
 - AWS account with permissions for:
   - ECR (Elastic Container Registry)
   - ECS (Elastic Container Service)
@@ -123,17 +137,20 @@ cd ../react-app && podman build -t shopping-cart-frontend .
 ### Automated Deployment
 
 1. **Set environment variables:**
+
 ```bash
 export AWS_REGION=us-east-1
 export DATABASE_URI="mongodb+srv://<user>:<password>@cluster.mongodb.net/shopping-cart"
 ```
 
-2. **Run deployment:**
+1. **Run deployment:**
+
 ```bash
 make deploy-aws
 ```
 
 Or using the script directly:
+
 ```bash
 cd infrastructure
 chmod +x deploy.sh
@@ -141,8 +158,9 @@ chmod +x deploy.sh
 ```
 
 The script will:
+
 - Create ECR repositories for backend and frontend
-- Build and push Podman images to ECR
+- Build and push Docker images to ECR
 - Deploy CloudFormation stack with:
   - VPC with public/private subnets
   - Application Load Balancer
@@ -154,31 +172,35 @@ The script will:
 ### Manual Deployment Steps
 
 **1. Create ECR repositories:**
+
 ```bash
 aws ecr create-repository --repository-name shopping-cart-backend --region us-east-1
 aws ecr create-repository --repository-name shopping-cart-frontend --region us-east-1
 ```
 
 **2. Login to ECR:**
+
 ```bash
 aws ecr get-login-password --region us-east-1 | \
-  podman login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
+  docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
 ```
 
 **3. Build and push images:**
+
 ```bash
 # Backend
-podman build -t shopping-cart-backend express-app
-podman tag shopping-cart-backend:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/shopping-cart-backend:latest
-podman push <account-id>.dkr.ecr.us-east-1.amazonaws.com/shopping-cart-backend:latest
+docker build -t shopping-cart-backend express-app
+docker tag shopping-cart-backend:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/shopping-cart-backend:latest
+docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/shopping-cart-backend:latest
 
 # Frontend
-podman build -t shopping-cart-frontend react-app
-podman tag shopping-cart-frontend:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/shopping-cart-frontend:latest
-podman push <account-id>.dkr.ecr.us-east-1.amazonaws.com/shopping-cart-frontend:latest
+docker build -t shopping-cart-frontend react-app
+docker tag shopping-cart-frontend:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/shopping-cart-frontend:latest
+docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/shopping-cart-frontend:latest
 ```
 
 **4. Deploy CloudFormation stack:**
+
 ```bash
 aws cloudformation deploy \
   --template-file infrastructure/cloudformation-ecs.yaml \
@@ -189,6 +211,7 @@ aws cloudformation deploy \
 ```
 
 **5. Get the ALB URL:**
+
 ```bash
 aws cloudformation describe-stacks \
   --stack-name shopping-cart-stack \
@@ -200,17 +223,23 @@ aws cloudformation describe-stacks \
 ## API Endpoints
 
 ### Auth Service (`/api/auth`)
+
 - `POST /register` - Register new user
+
   ```json
   { "email": "user@example.com", "password": "password", "name": "John Doe" }
   ```
+
 - `POST /login` - Login user
+
   ```json
   { "email": "user@example.com", "password": "password" }
   ```
+
 - `POST /verify` - Verify JWT token (requires Authorization header)
 
 ### Product Service (`/api/products`)
+
 - `GET /products` - List all products (supports `?category=` and `?search=`)
 - `GET /products/:id` - Get product details
 - `POST /products` - Create product (admin)
@@ -218,20 +247,27 @@ aws cloudformation describe-stacks \
 - `PATCH /products/:id/stock` - Update stock quantity
 
 ### Cart Service (`/api/cart`) - Requires Authentication
+
 - `GET /cart` - Get user's cart
 - `POST /cart/items` - Add item to cart
+
   ```json
   { "productId": "...", "quantity": 1, "price": 99.99 }
   ```
+
 - `PUT /cart/items/:productId` - Update item quantity
+
   ```json
   { "quantity": 2 }
   ```
+
 - `DELETE /cart/items/:productId` - Remove item from cart
 - `DELETE /cart` - Clear entire cart
 
 ### Order Service (`/api/orders`) - Requires Authentication
+
 - `POST /orders` - Create order from cart
+
   ```json
   {
     "items": [...],
@@ -244,6 +280,7 @@ aws cloudformation describe-stacks \
     }
   }
   ```
+
 - `GET /orders` - List user's orders
 - `GET /orders/:id` - Get order details
 - `PATCH /orders/:id/status` - Update order status
@@ -251,10 +288,12 @@ aws cloudformation describe-stacks \
 ## Environment Variables
 
 ### Backend Service
+
 - `DATABASE_URI` - MongoDB connection string
 - `JWT_SECRET` - Secret key for JWT token signing
 
 ### Frontend Service
+
 - `BACKEND_URL` - URL for backend API proxy (configured via nginx template)
   - Local: `http://backend:3000`
   - AWS ECS: `http://<ALB_DNS_NAME>`
@@ -302,11 +341,13 @@ make seed
 ```
 
 Or manually:
+
 ```bash
 cd express-app && npm run seed
 ```
 
 This will add 12 sample products with images including:
+
 - Electronics (laptops, phones, headphones, keyboards, etc.)
 - Furniture (office chairs, standing desks, lamps)
 
@@ -351,27 +392,32 @@ curl -X POST http://localhost:3000/api/auth/login \
 ## Troubleshooting
 
 ### Services Not Connecting
+
 - **Check security groups**: Ensure ECS security group allows traffic from ALB
 - **CloudWatch logs**: Check `/ecs/shopping-cart` for errors
 - **Health checks**: Verify `/health` endpoint responds
 
 ### Database Connection Issues
+
 - **MongoDB URI**: Verify connection string in Secrets Manager
 - **Network access**: Ensure MongoDB Atlas IP whitelist includes ECS task IPs
 - **Credentials**: Check username/password in connection string
 
 ### Container Health Check Failures
+
 - **Logs**: Check CloudWatch logs for startup errors
 - **Health endpoint**: Verify `/health` endpoint responds
 - **Start period**: Increase `startPeriod` in task definition if needed
 - **Resources**: Ensure sufficient CPU/memory allocation
 
 ### Local Development Issues
+
 - **Port conflicts**: Ensure ports 80, 3000 are available
 - **MongoDB**: Verify MongoDB is running on port 27017
 - **Dependencies**: Run `npm install` in root, express-app, and react-app directories
 
 ### Deployment Failures
+
 - **ECR permissions**: Verify IAM permissions for ECR push
 - **CloudFormation**: Check stack events for detailed error messages
 - **Secrets**: Ensure MongoDB URI is set in environment variable
@@ -379,7 +425,7 @@ curl -X POST http://localhost:3000/api/auth/login \
 
 ## Project Structure
 
-```
+```shell
 fullstack-demo/
 ├── express-app/       # Express backend
 │   ├── src/

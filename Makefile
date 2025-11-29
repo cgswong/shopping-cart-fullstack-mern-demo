@@ -4,11 +4,11 @@
 .DEFAULT_GOAL := help
 
 # Variables
+STACK_NAME := shopping-cart-stack
 REGION ?= us-east-1
 ACCOUNT_ID := $(shell aws sts get-caller-identity --query Account --output text 2>/dev/null)
-ECR_BACKEND := $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/shopping-cart-backend
-ECR_FRONTEND := $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/shopping-cart-frontend
-STACK_NAME := shopping-cart-stack
+ECR_BACKEND := $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/$(STACK_NAME)-backend
+ECR_FRONTEND := $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/$(STACK_NAME)-frontend
 
 help: ## Show this help message
 	@echo 'Simple Shopping Cart application to demo a fullstack MERN app'
@@ -53,11 +53,11 @@ seed: ## Seed database with sample products
 # Build and Containerization
 build-backend: ## Build backend container image
 	@echo "Building backend container..."
-	podman build -t shopping-cart-backend:latest express-app
+	podman build -t $(STACK_NAME)-backend:latest express-app
 
 build-frontend: ## Build frontend container image
 	@echo "Building frontend container..."
-	podman build -t shopping-cart-frontend:latest react-app
+	podman build -t $(STACK_NAME)-frontend:latest react-app
 
 build: build-backend build-frontend ## Build all container images
 
@@ -86,22 +86,22 @@ ecr-login: ## Login to AWS ECR
 
 ecr-create: ## Create ECR repositories
 	@echo "Creating ECR repositories..."
-	@aws ecr create-repository --repository-name shopping-cart-backend --region $(REGION) 2>/dev/null || true
-	@aws ecr create-repository --repository-name shopping-cart-frontend --region $(REGION) 2>/dev/null || true
+	@aws ecr create-repository --repository-name $(STACK_NAME)-backend --region $(REGION) 2>/dev/null || true
+	@aws ecr create-repository --repository-name $(STACK_NAME)-frontend --region $(REGION) 2>/dev/null || true
 
 cleanup-ecr: ## Cleanup ECR repositories
 	@echo "Deleting ECR repositories..."
-	@aws ecr delete-repository --repository-name shopping-cart-backend --region $(REGION) --force 2>/dev/null || true
-	@aws ecr delete-repository --repository-name shopping-cart-frontend --region $(REGION) --force 2>/dev/null || true
+	@aws ecr delete-repository --repository-name $(STACK_NAME)-backend --region $(REGION) --force 2>/dev/null || true
+	@aws ecr delete-repository --repository-name $(STACK_NAME)-frontend --region $(REGION) --force 2>/dev/null || true
 
 push-backend: build-backend ecr-login ## Build and push backend image to ECR
 	@echo "Tagging and pushing backend..."
-	podman tag shopping-cart-backend:latest $(ECR_BACKEND):latest
+	podman tag $(STACK_NAME)-backend:latest $(ECR_BACKEND):latest
 	podman push $(ECR_BACKEND):latest
 
 push-frontend: build-frontend ecr-login ## Build and push frontend image to ECR
 	@echo "Tagging and pushing frontend..."
-	podman tag shopping-cart-frontend:latest $(ECR_FRONTEND):latest
+	podman tag $(STACK_NAME)-frontend:latest $(ECR_FRONTEND):latest
 	podman push $(ECR_FRONTEND):latest
 
 push: push-backend push-frontend ## Build and push all images to ECR
@@ -132,17 +132,17 @@ status-aws: ## Check AWS deployment status
 	@echo "Checking CloudFormation stack status..."
 	@aws cloudformation describe-stacks --stack-name $(STACK_NAME) --region $(REGION) --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "Stack not found"
 	@echo "Checking ECS services..."
-	@aws ecs describe-services --cluster shopping-cart-cluster --services shopping-cart-backend shopping-cart-frontend --region $(REGION) --query 'services[*].[serviceName,status,runningCount,desiredCount]' --output table 2>/dev/null || echo "Services not found"
+	@aws ecs describe-services --cluster $(STACK_NAME)-cluster --services $(STACK_NAME)-backend $(STACK_NAME)-frontend --region $(REGION) --query 'services[*].[serviceName,status,runningCount,desiredCount]' --output table 2>/dev/null || echo "Services not found"
 
 logs-aws: ## View AWS ECS logs
 	@echo "Fetching recent ECS logs..."
-	@aws logs tail /ecs/shopping-cart --since 1h --region $(REGION) 2>/dev/null || echo "No logs found"
+	@aws logs tail /ecs/$(STACK_NAME) --since 1h --region $(REGION) 2>/dev/null || echo "No logs found"
 
 # Cleanup
 clean: ## Remove built images and containers
 	@echo "Cleaning up..."
-	podman rmi shopping-cart-backend:latest 2>/dev/null || true
-	podman rmi shopping-cart-frontend:latest 2>/dev/null || true
+	podman rmi $(STACK_NAME)-backend:latest 2>/dev/null || true
+	podman rmi $(STACK_NAME)-frontend:latest 2>/dev/null || true
 	cd infrastructure && podman-compose down -v 2>/dev/null || true
 
 clean-aws: cleanup-ecr ## Delete AWS CloudFormation stack

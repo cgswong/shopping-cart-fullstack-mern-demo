@@ -4,14 +4,14 @@ services:
   mongodb:
     image: mongo:7
     ports:
-      - "27017:27017"
+      - '27017:27017'
     volumes:
       - mongo-data:/data/db
 
   backend:
-    image: shopping-cart-backend:latest
+    image: ${STACK_NAME:-shopping-cart}-backend:latest
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - DATABASE_URI=mongodb://mongodb:27017/shopping-cart
       - JWT_SECRET=${JWT_SECRET:-dev-secret}
@@ -19,9 +19,9 @@ services:
       - mongodb
 
   frontend:
-    image: shopping-cart-frontend:latest
+    image: ${STACK_NAME:-shopping-cart}-frontend:latest
     ports:
-      - "80:80"
+      - '80:80'
     environment:
       - BACKEND_URL=http://backend:3000
     depends_on:

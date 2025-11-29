@@ -19,7 +19,7 @@ Resources:
       EnableDnsSupport: true
       Tags:
         - Key: Name
-          Value: shopping-cart-vpc
+          Value: !Sub '${AWS::StackName}-vpc'
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
@@ -74,7 +74,7 @@ Resources:
   ECSCluster:
     Type: AWS::ECS::Cluster
     Properties:
-      ClusterName: shopping-cart-cluster
+      ClusterName: !Sub '${AWS::StackName}-cluster'
       CapacityProviders:
         - FARGATE
         - FARGATE_SPOT
@@ -113,7 +113,7 @@ Resources:
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: shopping-cart-alb
+      Name: !Sub '${AWS::StackName}-alb'
       Subnets:
         - !Ref PublicSubnet1
         - !Ref PublicSubnet2
@@ -123,7 +123,7 @@ Resources:
   BackendTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: shopping-cart-backend-tg
+      Name: !Sub '${AWS::StackName}-backend-tg'
       Port: 3000
       Protocol: HTTP
       VpcId: !Ref VPC
@@ -137,7 +137,7 @@ Resources:
   FrontendTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: shopping-cart-frontend-tg
+      Name: !Sub '${AWS::StackName}-frontend-tg'
       Port: 80
       Protocol: HTTP
       VpcId: !Ref VPC
@@ -188,7 +188,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
-                Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:shopping-cart/*'
+                Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${AWS::StackName}/*'
 
   ECSTaskRole:
     Type: AWS::IAM::Role
@@ -203,19 +203,19 @@ Resources:
   LogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: /ecs/shopping-cart
+      LogGroupName: !Sub '/ecs/${AWS::StackName}'
       RetentionInDays: 7
 
   MongoDBSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: shopping-cart/mongo-uri
+      Name: !Sub '${AWS::StackName}/mongo-uri'
       SecretString: !Ref MongoDBConnectionString
 
   JWTSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: shopping-cart/jwt-secret
+      Name: !Sub '${AWS::StackName}/jwt-secret'
       GenerateSecretString:
         SecretStringTemplate: '{}'
         GenerateStringKey: secret
@@ -224,7 +224,7 @@ Resources:
   BackendTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: shopping-cart-backend
+      Family: !Sub '${AWS::StackName}-backend'
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
@@ -237,7 +237,7 @@ Resources:
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
         - Name: backend
-          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/shopping-cart-backend:latest'
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AWS::StackName}-backend:latest'
           PortMappings:
             - ContainerPort: 3000
           Secrets:
@@ -255,7 +255,7 @@ Resources:
   FrontendTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: shopping-cart-frontend
+      Family: !Sub '${AWS::StackName}-frontend'
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
@@ -268,7 +268,7 @@ Resources:
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
         - Name: frontend
-          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/shopping-cart-frontend:latest'
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AWS::StackName}-frontend:latest'
           PortMappings:
             - ContainerPort: 80
           Environment:
@@ -285,7 +285,7 @@ Resources:
     Type: AWS::ECS::Service
     DependsOn: ALBListener
     Properties:
-      ServiceName: shopping-cart-backend
+      ServiceName: !Sub '${AWS::StackName}-backend'
       Cluster: !Ref ECSCluster
       TaskDefinition: !Ref BackendTaskDefinition
       DesiredCount: 2
@@ -307,7 +307,7 @@ Resources:
     Type: AWS::ECS::Service
     DependsOn: ALBListener
     Properties:
-      ServiceName: shopping-cart-frontend
+      ServiceName: !Sub '${AWS::StackName}-frontend'
       Cluster: !Ref ECSCluster
       TaskDefinition: !Ref FrontendTaskDefinition
       DesiredCount: 2
