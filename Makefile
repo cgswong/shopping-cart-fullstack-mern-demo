@@ -65,12 +65,12 @@ build: build-backend build-frontend ## Build all container images
 deploy-local: ## Deploy application locally with podman-compose
 	@echo "Starting local deployment..."
 	cd infrastructure && podman-compose up -d
-	@echo "Application running at http://localhost:80"
+	@echo "Application running at http://localhost:8080"
 
 deploy-local-build: build ## Build and deploy application locally with podman-compose
 	@echo "Starting local deployment..."
 	cd infrastructure && podman-compose up -d
-	@echo "Application running at http://localhost:80"
+	@echo "Application running at http://localhost:8080"
 
 stop-local: ## Stop local deployment
 	@echo "Stopping local deployment..."
